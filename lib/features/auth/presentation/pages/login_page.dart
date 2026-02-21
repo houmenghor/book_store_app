@@ -85,6 +85,16 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
+    if (session.user.email.trim().isNotEmpty) {
+      await _tokenStorage.saveUserEmail(session.user.email.trim());
+    } else {
+      await _tokenStorage.saveUserEmail(email);
+    }
+    final phone = (session.user.phone ?? '').trim();
+    if (phone.isNotEmpty) {
+      await _tokenStorage.saveUserPhone(phone);
+    }
+
     final needsActivation = _isActivationPending(session);
     setState(() {
       _showActivationAction = needsActivation;

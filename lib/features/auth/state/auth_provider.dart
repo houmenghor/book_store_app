@@ -42,6 +42,44 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> updateProfile({
+    required String firstName,
+    required String lastName,
+    required String phone,
+    String? gender,
+    String? dateOfBirth,
+    String? profileImagePath,
+  }) async {
+    _setLoading(true);
+    _error = null;
+    _errorDetails = null;
+
+    try {
+      final user = await _repository.updateProfile(
+        firstName: firstName,
+        lastName: lastName,
+        phone: phone,
+        gender: gender,
+        dateOfBirth: dateOfBirth,
+        profileImagePath: profileImagePath,
+      );
+
+      if (_session != null) {
+        _session = AuthSession(
+          user: user,
+          accessToken: _session!.accessToken,
+          flags: _session!.flags,
+        );
+      }
+      return true;
+    } catch (e) {
+      _setError(e);
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   Future<bool> sendOtp({
     required String email,
     OtpPurpose purpose = OtpPurpose.emailVerify,

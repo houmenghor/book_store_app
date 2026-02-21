@@ -76,6 +76,51 @@ class ApiClient {
     );
   }
 
+  Future<Map<String, dynamic>> multipartPost(
+    String path, {
+    Map<String, String>? fields,
+    List<http.MultipartFile>? files,
+    bool authRequired = false,
+  }) async {
+    try {
+      final request = http.MultipartRequest('POST', _buildUri(path));
+      final headers = await _headers(authRequired: authRequired);
+
+      // Multipart requests must provide their own boundary content type.
+      headers.remove('Content-Type');
+      request.headers.addAll(headers);
+
+      if (fields != null) {
+        for (final entry in fields.entries) {
+          final value = entry.value.trim();
+          if (value.isNotEmpty) {
+            request.fields[entry.key] = value;
+          }
+        }
+      }
+
+      if (files != null && files.isNotEmpty) {
+        request.files.addAll(files);
+      }
+
+      final streamed = await request.send().timeout(const Duration(seconds: 30));
+      final response = await http.Response.fromStream(streamed);
+      return _decodeResponse(response);
+    } on SocketException {
+      throw const ApiException(
+        message: 'Network connection failed.',
+      );
+    } on TimeoutException {
+      throw const ApiException(
+        message: 'Request timed out. Please try again.',
+      );
+    } on FormatException {
+      throw const ApiException(
+        message: 'Invalid server response format.',
+      );
+    }
+  }
+
   Uri _buildUri(String path, [Map<String, dynamic>? query]) {
     final normalizedBase = _baseUrl.endsWith('/')
         ? _baseUrl.substring(0, _baseUrl.length - 1)

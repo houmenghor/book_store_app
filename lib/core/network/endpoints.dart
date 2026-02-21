@@ -8,9 +8,11 @@
   static const String otpSend = '/v1/auth/otp/send';
   static const String otpResend = '/v1/auth/otp/resend';
   static const String otpVerify = '/v1/auth/otp/verify';
+  static const String updateProfile = '/v1/me';
   static const String logout = '/v1/auth/logout';
 
   static const String products = '/v1/products';
+  static const String categories = '/v1/categories';
 
   static String productByUuid(String uuid) => '/v1/products/$uuid';
 }

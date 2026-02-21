@@ -4,6 +4,14 @@ import 'auth_models.dart';
 
 abstract class IAuthRepository {
   Future<AuthSession> login({required String email, required String password});
+  Future<UserModel> updateProfile({
+    required String firstName,
+    required String lastName,
+    required String phone,
+    String? gender,
+    String? dateOfBirth,
+    String? profileImagePath,
+  });
   Future<void> sendOtp({required String email, OtpPurpose purpose});
   Future<OtpVerifyResult> verifyOtp({
     required String email,
@@ -30,10 +38,56 @@ class AuthRepository implements IAuthRepository {
   }) async {
     final session = await _api.login(email: email, password: password);
     if (session.accessToken.isNotEmpty) {
+      final resolvedEmail = session.user.email.trim().isNotEmpty
+          ? session.user.email.trim()
+          : email.trim();
+      final resolvedPhone = (session.user.phone ?? '').trim();
+
       await _tokenStorage.saveToken(session.accessToken);
       await _tokenStorage.saveUserName(session.user.fullName);
+      await _tokenStorage.saveUserEmail(resolvedEmail);
+      if (resolvedPhone.isNotEmpty) {
+        await _tokenStorage.saveUserPhone(resolvedPhone);
+      }
+      await _tokenStorage.saveUserGender((session.user.gender ?? '').trim());
+      if ((session.user.dateOfBirth ?? '').trim().isNotEmpty) {
+        await _tokenStorage.saveUserDateOfBirth(session.user.dateOfBirth!.trim());
+      }
     }
     return session;
+  }
+
+  @override
+  Future<UserModel> updateProfile({
+    required String firstName,
+    required String lastName,
+    required String phone,
+    String? gender,
+    String? dateOfBirth,
+    String? profileImagePath,
+  }) async {
+    final user = await _api.updateProfile(
+      firstName: firstName,
+      lastName: lastName,
+      phone: phone,
+      gender: gender,
+      dateOfBirth: dateOfBirth,
+      profileImagePath: profileImagePath,
+    );
+
+    await _tokenStorage.saveUserName(user.fullName);
+    if (user.email.trim().isNotEmpty) {
+      await _tokenStorage.saveUserEmail(user.email.trim());
+    }
+    if ((user.phone ?? '').trim().isNotEmpty) {
+      await _tokenStorage.saveUserPhone(user.phone!.trim());
+    }
+    await _tokenStorage.saveUserGender((user.gender ?? '').trim());
+    if ((user.dateOfBirth ?? '').trim().isNotEmpty) {
+      await _tokenStorage.saveUserDateOfBirth(user.dateOfBirth!.trim());
+    }
+
+    return user;
   }
 
   @override
