@@ -1,4 +1,6 @@
-﻿import '../../../core/network/api_client.dart';
+import 'package:http/http.dart' as http;
+
+import '../../../core/network/api_client.dart';
 import '../../../core/network/endpoints.dart';
 import 'auth_models.dart';
 
@@ -81,6 +83,40 @@ class AuthApi {
       },
     );
     return (response['message'] as String?) ?? 'Password reset successful.';
+  }
+
+  Future<UserModel> updateProfile({
+    required String firstName,
+    required String lastName,
+    required String phone,
+    String? gender,
+    String? dateOfBirth,
+    String? profileImagePath,
+  }) async {
+    final files = <http.MultipartFile>[];
+    final imagePath = (profileImagePath ?? '').trim();
+    if (imagePath.isNotEmpty) {
+      files.add(await http.MultipartFile.fromPath('profile_image', imagePath));
+    }
+
+    final response = await _client.multipartPost(
+      Endpoints.updateProfile,
+      authRequired: true,
+      fields: {
+        'first_name': firstName,
+        'last_name': lastName,
+        'phone': phone,
+        if (gender != null && gender.trim().isNotEmpty) 'gender': gender,
+        if (dateOfBirth != null && dateOfBirth.trim().isNotEmpty)
+          'date_of_birth': dateOfBirth,
+      },
+      files: files.isEmpty ? null : files,
+    );
+
+    final data = (response['data'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+    final userRaw = data['user'];
+    final userMap = userRaw is Map<String, dynamic> ? userRaw : data;
+    return UserModel.fromJson(userMap);
   }
 
   Future<void> logout() async {

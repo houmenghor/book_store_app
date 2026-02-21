@@ -21,6 +21,27 @@ class _FakeAuthRepository implements IAuthRepository {
   }
 
   @override
+  Future<UserModel> updateProfile({
+    required String firstName,
+    required String lastName,
+    required String phone,
+    String? gender,
+    String? dateOfBirth,
+    String? profileImagePath,
+  }) async {
+    return UserModel(
+      id: 1,
+      uuid: 'user-uuid',
+      firstName: firstName,
+      lastName: lastName,
+      email: 'test@example.com',
+      phone: phone,
+      gender: gender,
+      dateOfBirth: dateOfBirth,
+    );
+  }
+
+  @override
   Future<void> logout() async {}
 
   @override

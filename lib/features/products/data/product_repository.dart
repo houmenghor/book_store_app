@@ -13,6 +13,15 @@ abstract class IProductRepository {
   });
 
   Future<ProductModel> getProduct(String uuid);
+
+  Future<CategoryListResponse> getCategories({
+    String? search,
+    String? column,
+    String? sort,
+    int? status,
+    int? perPage,
+    int? page,
+  });
 }
 
 class ProductRepository implements IProductRepository {
@@ -44,5 +53,24 @@ class ProductRepository implements IProductRepository {
   @override
   Future<ProductModel> getProduct(String uuid) {
     return _api.getProduct(uuid);
+  }
+
+  @override
+  Future<CategoryListResponse> getCategories({
+    String? search,
+    String? column,
+    String? sort,
+    int? status,
+    int? perPage,
+    int? page,
+  }) {
+    return _api.getCategories(
+      search: search,
+      column: column,
+      sort: sort,
+      status: status,
+      perPage: perPage,
+      page: page,
+    );
   }
 }

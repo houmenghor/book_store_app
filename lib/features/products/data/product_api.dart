@@ -37,4 +37,27 @@ class ProductApi {
     final data = (response['data'] as Map<String, dynamic>?) ?? <String, dynamic>{};
     return ProductModel.fromJson(data);
   }
+
+  Future<CategoryListResponse> getCategories({
+    String? search,
+    String? column,
+    String? sort,
+    int? status,
+    int? perPage,
+    int? page,
+  }) async {
+    final response = await _client.get(
+      Endpoints.categories,
+      query: {
+        if (search != null && search.isNotEmpty) 'search': search,
+        if (column != null && column.isNotEmpty) 'column': column,
+        if (sort != null && sort.isNotEmpty) 'sort': sort,
+        if (status != null) 'status': status,
+        if (perPage != null) 'per_page': perPage,
+        if (page != null) 'page': page,
+      },
+    );
+
+    return CategoryListResponse.fromApi(response);
+  }
 }
