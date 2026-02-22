@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../../../core/config/theme.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/storage/token_storage.dart';
+import '../../../auth/presentation/pages/login_page.dart';
 import '../../data/order_api.dart';
 import '../../data/order_models.dart';
 import '../../../products/presentation/pages/all_books_page.dart';
@@ -22,6 +23,7 @@ class _OrdersPageState extends State<OrdersPage> {
   );
 
   bool _isLoading = true;
+  bool _requiresLogin = false;
   String? _error;
   List<OrderModel> _orders = const <OrderModel>[];
 
@@ -40,9 +42,38 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
+  Future<void> _openLogin(BuildContext context) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const LoginPage(),
+      ),
+    );
+    if (!mounted) {
+      return;
+    }
+    await _loadOrders();
+  }
+
   Future<void> _loadOrders() async {
+    final token = await _tokenStorage.readToken();
+    final isLoggedIn = token != null && token.trim().isNotEmpty;
+    if (!isLoggedIn) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isLoading = false;
+        _requiresLogin = true;
+        _error = null;
+        _orders = const <OrderModel>[];
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
+      _requiresLogin = false;
       _error = null;
     });
 
@@ -67,7 +98,17 @@ class _OrdersPageState extends State<OrdersPage> {
         return;
       }
       setState(() {
-        _error = e is ApiException ? e.message : e.toString();
+        final message = e is ApiException ? e.message : e.toString();
+        final normalized = message.toLowerCase();
+        if (normalized.contains('authentication token') ||
+            normalized.contains('unauthenticated') ||
+            normalized.contains('please login')) {
+          _requiresLogin = true;
+          _error = null;
+          _orders = const <OrderModel>[];
+        } else {
+          _error = message;
+        }
         _isLoading = false;
       });
     }
@@ -117,6 +158,10 @@ class _OrdersPageState extends State<OrdersPage> {
   }
 
   Widget _buildBody() {
+    if (_requiresLogin) {
+      return _buildLoginRequiredState();
+    }
+
     if (_error != null) {
       return Center(
         child: Padding(
@@ -211,6 +256,61 @@ class _OrdersPageState extends State<OrdersPage> {
       ),
     );
   }
+
+  Widget _buildLoginRequiredState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.lock_outline_rounded,
+              size: 76,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'Login to view orders',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textMain,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Your order history is available after you sign in.',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 18),
+            ElevatedButton(
+              onPressed: () => _openLogin(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(140, 42),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              child: const Text('Login'),
+            ),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: () => _openBrowseBooks(context),
+              child: const Text('Browse Books'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _OrderCard extends StatelessWidget {
@@ -292,7 +392,7 @@ class _OrderCard extends StatelessWidget {
                       child: Row(
                         children: [
                           const Text(
-                            '� ',
+                            '• ',
                             style: TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 11,
@@ -447,3 +547,4 @@ String _formatDate(DateTime? date) {
   final month = months[date.month - 1];
   return '$month ${date.day}, ${date.year}';
 }
+
