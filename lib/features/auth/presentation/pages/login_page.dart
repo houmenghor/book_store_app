@@ -241,104 +241,116 @@ class _LoginPageState extends State<LoginPage> {
                 : null,
           ),
           body: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
-                autovalidateMode: _loginFormSubmitted
-                    ? AutovalidateMode.onUserInteraction
-                    : AutovalidateMode.disabled,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      'Login',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 40),
-                    AuthTextField(
-                      controller: _emailController,
-                      label: 'Email',
-                      hint: 'Enter your email',
-                      keyboardType: TextInputType.emailAddress,
-                      validator: _validateEmail,
-                      onChanged: (_) => setState(() {
-                        _showActivationAction = false;
-                      }),
-                    ),
-                    const SizedBox(height: 20),
-                    AuthTextField(
-                      controller: _passwordController,
-                      label: 'Password',
-                      hint: 'Enter your password',
-                      isObscure: true,
-                      validator: _validatePassword,
-                      onChanged: (_) => setState(() {
-                        _showActivationAction = false;
-                      }),
-                    ),
-                    const SizedBox(height: 10),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ForgotPasswordEmailPage(),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: IntrinsicHeight(
+                      child: Form(
+                        key: _formKey,
+                        autovalidateMode: _loginFormSubmitted
+                            ? AutovalidateMode.onUserInteraction
+                            : AutovalidateMode.disabled,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'Login',
+                              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                             ),
-                          );
-                        },
-                        child: const Text(
-                          'Forgot password?',
-                          style: TextStyle(
-                            color: Color(0xFF9C27B0),
-                            fontWeight: FontWeight.w600,
-                          ),
+                            const SizedBox(height: 40),
+                            AuthTextField(
+                              controller: _emailController,
+                              label: 'Email',
+                              hint: 'Enter your email',
+                              keyboardType: TextInputType.emailAddress,
+                              validator: _validateEmail,
+                              onChanged: (_) => setState(() {
+                                _showActivationAction = false;
+                              }),
+                            ),
+                            const SizedBox(height: 20),
+                            AuthTextField(
+                              controller: _passwordController,
+                              label: 'Password',
+                              hint: 'Enter your password',
+                              isObscure: true,
+                              validator: _validatePassword,
+                              onChanged: (_) => setState(() {
+                                _showActivationAction = false;
+                              }),
+                            ),
+                            const SizedBox(height: 10),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const ForgotPasswordEmailPage(),
+                                    ),
+                                  );
+                                },
+                                child: const Text(
+                                  'Forgot password?',
+                                  style: TextStyle(
+                                    color: Color(0xFF9C27B0),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            if (isLoading)
+                              const CircularProgressIndicator()
+                            else
+                              AppButton(
+                                text: 'Submit',
+                                onPressed: _isLoginFormValidForSubmit ? _submitLogin : null,
+                              ),
+                            if (_showActivationAction) ...[
+                              const SizedBox(height: 14),
+                              TextButton(
+                                onPressed: _goActivateAccount,
+                                child: const Text('Activate account'),
+                              ),
+                            ],
+                            const Spacer(),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Text("Don't have an account? "),
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const RegisterPage(),
+                                      ),
+                                    );
+                                  },
+                                  child: const Text(
+                                    'Register',
+                                    style: TextStyle(
+                                      color: Color(0xFF9C27B0),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                          ],
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    if (isLoading)
-                      const CircularProgressIndicator()
-                    else
-                      AppButton(
-                        text: 'Submit',
-                        onPressed: _isLoginFormValidForSubmit ? _submitLogin : null,
-                      ),
-                    if (_showActivationAction) ...[
-                      const SizedBox(height: 14),
-                      TextButton(
-                        onPressed: _goActivateAccount,
-                        child: const Text('Activate account'),
-                      ),
-                    ],
-                    const Spacer(),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text("Don't have an account? "),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const RegisterPage()),
-                            );
-                          },
-                          child: const Text(
-                            'Register',
-                            style: TextStyle(
-                              color: Color(0xFF9C27B0),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             ),
           ),
         );

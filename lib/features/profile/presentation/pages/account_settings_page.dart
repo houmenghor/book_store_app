@@ -149,9 +149,8 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
 
     setState(() => _isSendingCode = true);
     try {
-      await _authRepository.sendOtp(
-        email: newEmail,
-        purpose: OtpPurpose.changeEmail,
+      final message = await _authRepository.changeEmail(
+        newEmail: newEmail,
       );
       await _tokenStorage.savePendingChangeEmail(
         newEmail,
@@ -166,7 +165,7 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Verification code sent to new email.')),
+        SnackBar(content: Text(message)),
       );
       await _showVerifyEmailDialog(newEmail);
     } catch (e) {
@@ -222,16 +221,19 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
       var closedDialog = false;
       setDialogState(() => isVerifying = true);
       try {
-        await _authRepository.verifyOtp(
+        final result = await _authRepository.verifyOtp(
           email: email,
           otp: code,
           purpose: OtpPurpose.changeEmail,
         );
+        final updatedEmail = (result.user?.email ?? email).trim().isNotEmpty
+            ? (result.user?.email ?? email).trim()
+            : email;
 
         final pendingAccountKey = _pendingEmailAccountKey;
-        await _tokenStorage.saveUserEmail(email);
+        await _tokenStorage.saveUserEmail(updatedEmail);
         await _tokenStorage.clearPendingChangeEmail(accountKey: pendingAccountKey);
-        _currentEmailController.text = email;
+        _currentEmailController.text = updatedEmail;
         _newEmailController.clear();
 
         if (!mounted) {
@@ -244,7 +246,13 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
         closedDialog = true;
         Navigator.pop(dialogContext);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Email verified successfully.')),
+          SnackBar(
+            content: Text(
+              result.message.trim().isEmpty
+                  ? 'New email verified successfully.'
+                  : result.message,
+            ),
+          ),
         );
       } catch (e) {
         if (!mounted) {
@@ -264,7 +272,7 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
     Future<void> handleResend(StateSetter setDialogState) async {
       setDialogState(() => isResending = true);
       try {
-        await _authRepository.sendOtp(
+        await _authRepository.resendOtp(
           email: email,
           purpose: OtpPurpose.changeEmail,
         );

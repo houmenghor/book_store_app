@@ -9,6 +9,7 @@
   static const String otpResend = '/v1/auth/otp/resend';
   static const String otpVerify = '/v1/auth/otp/verify';
   static const String updateProfile = '/v1/me';
+  static const String changeEmail = '/v1/me/change-email';
   static const String changePassword = '/v1/me/change-password';
   static const String logout = '/v1/auth/logout';
   static const String checkoutOrder = '/v1/order/checkout';
