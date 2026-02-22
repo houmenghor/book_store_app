@@ -69,6 +69,19 @@ class AuthApi {
     );
   }
 
+  Future<void> resendOtp({
+    required String email,
+    OtpPurpose purpose = OtpPurpose.emailVerify,
+  }) async {
+    await _client.post(
+      Endpoints.otpResend,
+      body: {
+        'email': email,
+        'purpose': purpose.value,
+      },
+    );
+  }
+
   Future<OtpVerifyResult> verifyOtp({
     required String email,
     required String otp,
@@ -106,6 +119,21 @@ class AuthApi {
       },
     );
     return (response['message'] as String?) ?? 'Password reset successful.';
+  }
+
+  Future<String> changeEmail({
+    required String newEmail,
+  }) async {
+    final response = await _client.post(
+      Endpoints.changeEmail,
+      authRequired: true,
+      body: {
+        'new_email': newEmail,
+      },
+    );
+
+    return (response['message'] as String?) ??
+        'Verification code sent to your new email. Enter the code to confirm the change.';
   }
 
   Future<UserModel> updateProfile({

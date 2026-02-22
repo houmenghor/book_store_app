@@ -284,19 +284,17 @@ class _ProductListPageState extends State<ProductListPage> {
   }
 
   void _onMenuSelected(String value) {
-    switch (value) {
-      case 'profile':
-        _openProfilePage();
-        break;
-      case 'my_books':
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('My books page is coming soon.')),
-        );
-        break;
-      case 'logout':
-        _logout();
-        break;
-    }
+      switch (value) {
+        case 'profile':
+          _openProfilePage();
+          break;
+        case 'my_books':
+          _openOrdersPage();
+          break;
+        case 'logout':
+          _logout();
+          break;
+      }
   }
 
   Future<void> _openProfilePage() async {

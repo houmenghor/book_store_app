@@ -136,12 +136,25 @@ class AuthRepository implements IAuthRepository {
     );
   }
 
+  Future<String> changeEmail({
+    required String newEmail,
+  }) {
+    return _api.changeEmail(newEmail: newEmail);
+  }
+
   @override
   Future<void> sendOtp({
     required String email,
     OtpPurpose purpose = OtpPurpose.emailVerify,
   }) {
     return _api.sendOtp(email: email, purpose: purpose);
+  }
+
+  Future<void> resendOtp({
+    required String email,
+    OtpPurpose purpose = OtpPurpose.emailVerify,
+  }) {
+    return _api.resendOtp(email: email, purpose: purpose);
   }
 
   @override
