@@ -20,7 +20,12 @@ import 'categories_page.dart';
 import 'product_detail_page.dart';
 
 class ProductListPage extends StatefulWidget {
-  const ProductListPage({super.key});
+  const ProductListPage({
+    super.key,
+    this.openProfileOnStart = false,
+  });
+
+  final bool openProfileOnStart;
 
   @override
   State<ProductListPage> createState() => _ProductListPageState();
@@ -56,6 +61,7 @@ class _ProductListPageState extends State<ProductListPage> {
   int _latestSearchToken = 0;
   Set<String> _wishlistUuids = <String>{};
   int _cartCount = 0;
+  bool _didAutoOpenProfile = false;
 
   List<ProductModel> _allProducts = <ProductModel>[];
   List<ProductModel> _filteredProducts = <ProductModel>[];
@@ -101,6 +107,16 @@ class _ProductListPageState extends State<ProductListPage> {
 
     await _loadWishlistState();
     await _loadCartCount();
+
+    if (widget.openProfileOnStart && _isLoggedIn && !_didAutoOpenProfile && mounted) {
+      _didAutoOpenProfile = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) {
+          return;
+        }
+        await _openProfilePage();
+      });
+    }
   }
 
   Future<void> _goToLogin() async {
@@ -805,7 +821,7 @@ class _ProductListPageState extends State<ProductListPage> {
       controller: _searchController,
       onChanged: _onSearchChanged,
       decoration: InputDecoration(
-        hintText: 'Search books, authors...',
+        hintText: 'Search books...',
         hintStyle: const TextStyle(
           color: AppColors.textSecondary,
           fontSize: 14,

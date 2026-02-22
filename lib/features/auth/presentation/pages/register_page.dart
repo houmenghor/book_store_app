@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../../../../core/config/theme.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/token_storage.dart';
 import '../../../../shared/widgets/app_button.dart';
@@ -8,7 +10,7 @@ import '../../data/auth_models.dart';
 import '../../data/auth_repository.dart';
 import '../../state/auth_provider.dart';
 import '../widgets/auth_textfield.dart';
-import 'otp_page.dart';
+import '../../../products/presentation/pages/product_list_page.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -192,16 +194,274 @@ class _RegisterPageState extends State<RegisterPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Register successful. Verification OTP sent.')),
     );
-
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => OtpPage(
-          authProvider: _authProvider,
-          initialEmail: email,
-        ),
-      ),
+    await _showRegisterOtpDialog(
+      email: email,
+      password: password,
     );
+  }
+
+  Future<void> _showRegisterOtpDialog({
+    required String email,
+    required String password,
+  }) async {
+    final controllers = List<TextEditingController>.generate(
+      6,
+      (_) => TextEditingController(),
+    );
+    final focusNodes = List<FocusNode>.generate(6, (_) => FocusNode());
+    var isVerifying = false;
+    var isResending = false;
+
+    Future<void> handleVerify(
+      StateSetter setDialogState,
+      BuildContext dialogContext,
+    ) async {
+      final code = controllers.map((c) => c.text.trim()).join();
+      if (code.length != 6) {
+        return;
+      }
+
+      var closedDialog = false;
+      setDialogState(() => isVerifying = true);
+      try {
+        final verified = await _authProvider.verifyOtp(
+          otp: code,
+          purpose: OtpPurpose.emailVerify,
+        );
+
+        if (!verified) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(_resolveError())),
+          );
+          return;
+        }
+
+        final loggedIn = await _authProvider.login(
+          email: email,
+          password: password,
+        );
+
+        if (!mounted) {
+          return;
+        }
+
+        if (!loggedIn) {
+          closedDialog = true;
+          Navigator.pop(dialogContext);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(_resolveError())),
+          );
+          Navigator.pop(context);
+          return;
+        }
+
+        closedDialog = true;
+        Navigator.pop(dialogContext);
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (_) => const ProductListPage(),
+          ),
+          (route) => false,
+        );
+      } finally {
+        if (mounted && !closedDialog) {
+          setDialogState(() => isVerifying = false);
+        }
+      }
+    }
+
+    Future<void> handleResend(StateSetter setDialogState) async {
+      setDialogState(() => isResending = true);
+      try {
+        final ok = await _authProvider.sendOtp(
+          email: email,
+          purpose: OtpPurpose.emailVerify,
+        );
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(ok ? 'OTP resent to your email.' : _resolveError()),
+          ),
+        );
+      } finally {
+        if (mounted) {
+          setDialogState(() => isResending = false);
+        }
+      }
+    }
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final code = controllers.map((c) => c.text.trim()).join();
+            final canVerify = code.length == 6 && !isVerifying;
+
+            return Dialog(
+              insetPadding: const EdgeInsets.symmetric(horizontal: 18),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        const Spacer(),
+                        const Text(
+                          'Verify Email',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textMain,
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: () => Navigator.pop(dialogContext),
+                          icon: const Icon(Icons.close, size: 18),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Enter the 6-digit code sent to\n$email',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List<Widget>.generate(6, (index) {
+                        return Container(
+                          width: 32,
+                          height: 36,
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          child: TextField(
+                            controller: controllers[index],
+                            focusNode: focusNodes[index],
+                            textAlign: TextAlign.center,
+                            keyboardType: TextInputType.number,
+                            textInputAction:
+                                index == 5 ? TextInputAction.done : TextInputAction.next,
+                            maxLength: 1,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(1),
+                            ],
+                            onChanged: (value) {
+                              if (value.isNotEmpty && index < 5) {
+                                focusNodes[index + 1].requestFocus();
+                              } else if (value.isEmpty && index > 0) {
+                                focusNodes[index - 1].requestFocus();
+                              }
+                              setDialogState(() {});
+                            },
+                            decoration: InputDecoration(
+                              counterText: '',
+                              contentPadding: EdgeInsets.zero,
+                              filled: true,
+                              fillColor: const Color(0xFFF7F8FC),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(color: Color(0xFFE0E3EC)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(
+                                  color: AppColors.primary,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed:
+                            canVerify ? () => handleVerify(setDialogState, dialogContext) : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: AppColors.primary.withOpacity(0.45),
+                          disabledForegroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: isVerifying
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('Verify Email'),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          "Didn't receive the code? ",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMain,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: isResending ? null : () => handleResend(setDialogState),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(0, 0),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: Text(
+                            isResending ? 'Sending...' : 'Resend OTP',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    for (final controller in controllers) {
+      controller.dispose();
+    }
+    for (final node in focusNodes) {
+      node.dispose();
+    }
   }
 
   @override

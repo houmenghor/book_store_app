@@ -583,14 +583,6 @@ class _AllBooksPageState extends State<AllBooksPage> {
                         hintText: 'Search books...',
                         hintStyle: const TextStyle(color: AppColors.textSecondary),
                         prefixIcon: const Icon(LucideIcons.search, color: AppColors.textSecondary),
-                        suffixIcon: IconButton(
-                          onPressed: _toggleViewMode,
-                          tooltip: _isListView ? 'Show grid' : 'Show list',
-                          icon: Icon(
-                            _isListView ? LucideIcons.layoutGrid : LucideIcons.list,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                         filled: true,
                         fillColor: Colors.white,
@@ -737,47 +729,116 @@ class _AllBooksPageState extends State<AllBooksPage> {
     }
     final canPrev = _currentPage > 1;
     final canNext = _hasMorePages;
+    final totalPages = _totalPages;
+    final pageNumbers = _buildPageNumbers(totalPages);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       child: Row(
         children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: canPrev ? () => _goToPage(_currentPage - 1) : null,
-              child: const Text('Prev'),
-            ),
+          _PaginationIconButton(
+            icon: LucideIcons.chevronLeft,
+            enabled: canPrev,
+            onTap: canPrev ? () => _goToPage(_currentPage - 1) : null,
           ),
           const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFE0E3EC)),
-            ),
-            child: Text(
-              'Page $_currentPage',
-              style: const TextStyle(
-                color: AppColors.textMain,
-                fontWeight: FontWeight.w600,
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: pageNumbers.map((page) {
+                  final isActive = page == _currentPage;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: InkWell(
+                      onTap: isActive ? null : () => _goToPage(page),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: isActive ? AppColors.primary : Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isActive
+                                ? AppColors.primary
+                                : const Color(0xFFE0E3EC),
+                          ),
+                        ),
+                        child: Text(
+                          '$page',
+                          style: TextStyle(
+                            color: isActive ? Colors.white : AppColors.textMain,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(growable: false),
               ),
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: canNext ? () => _goToPage(_currentPage + 1) : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: AppColors.primary.withOpacity(0.45),
-                disabledForegroundColor: Colors.white,
-              ),
-              child: const Text('Next'),
-            ),
+          _PaginationIconButton(
+            icon: LucideIcons.chevronRight,
+            enabled: canNext,
+            onTap: canNext ? () => _goToPage(_currentPage + 1) : null,
           ),
         ],
+      ),
+    );
+  }
+
+  List<int> _buildPageNumbers(int totalPages) {
+    if (totalPages <= 3) {
+      return List<int>.generate(totalPages, (index) => index + 1);
+    }
+
+    if (_currentPage <= 2) {
+      return const <int>[1, 2, 3];
+    }
+
+    if (_currentPage >= totalPages - 1) {
+      return <int>[totalPages - 2, totalPages - 1, totalPages];
+    }
+
+    return <int>[_currentPage - 1, _currentPage, _currentPage + 1];
+  }
+}
+
+class _PaginationIconButton extends StatelessWidget {
+  const _PaginationIconButton({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: enabled ? Colors.white : const Color(0xFFF4F5FA),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE0E3EC)),
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          icon,
+          size: 18,
+          color: enabled ? AppColors.textMain : AppColors.textSecondary,
+        ),
       ),
     );
   }
