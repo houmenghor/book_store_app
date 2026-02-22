@@ -10,6 +10,8 @@ class AuthTextField extends StatefulWidget {
     this.controller,
     this.isObscure = false,
     this.keyboardType = TextInputType.text,
+    this.validator,
+    this.onChanged,
   });
 
   final String label;
@@ -17,6 +19,8 @@ class AuthTextField extends StatefulWidget {
   final TextEditingController? controller;
   final bool isObscure;
   final TextInputType keyboardType;
+  final String? Function(String?)? validator;
+  final ValueChanged<String>? onChanged;
 
   @override
   State<AuthTextField> createState() => _AuthTextFieldState();
@@ -53,10 +57,12 @@ class _AuthTextFieldState extends State<AuthTextField> {
           ),
         ),
         const SizedBox(height: 8),
-        TextField(
+        TextFormField(
           controller: widget.controller,
           obscureText: widget.isObscure ? _obscureText : false,
           keyboardType: widget.keyboardType,
+          onChanged: widget.onChanged,
+          validator: widget.validator,
           decoration: InputDecoration(
             hintText: widget.hint,
             hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
@@ -73,6 +79,15 @@ class _AuthTextFieldState extends State<AuthTextField> {
               borderRadius: BorderRadius.circular(25),
               borderSide: const BorderSide(color: AppColors.primary),
             ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(25),
+              borderSide: const BorderSide(color: Colors.redAccent),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(25),
+              borderSide: const BorderSide(color: Colors.redAccent),
+            ),
+            errorStyle: const TextStyle(fontSize: 11),
             suffixIcon: widget.isObscure
                 ? IconButton(
                     onPressed: () {

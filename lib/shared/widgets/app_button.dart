@@ -3,7 +3,7 @@ import '../../core/config/theme.dart';
 
 class AppButton extends StatelessWidget {
   final String text;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final Color color;
 
   const AppButton({
@@ -22,7 +22,9 @@ class AppButton extends StatelessWidget {
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
+          disabledBackgroundColor: color.withOpacity(0.45),
           foregroundColor: Colors.white,
+          disabledForegroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(25), // Rounded pill shape
           ),

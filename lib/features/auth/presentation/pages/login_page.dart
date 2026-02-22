@@ -21,6 +21,7 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -29,6 +30,7 @@ class _LoginPageState extends State<LoginPage> {
   late final AuthProvider _authProvider;
 
   bool _showActivationAction = false;
+  bool _loginFormSubmitted = false;
 
   @override
   void initState() {
@@ -52,13 +54,16 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _submitLogin() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
-
-    if (email.isEmpty || password.isEmpty) {
-      _showMessage('Please enter email and password.');
+    setState(() {
+      _loginFormSubmitted = true;
+      _showActivationAction = false;
+    });
+    if (!_formKey.currentState!.validate()) {
       return;
     }
+
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
 
     final ok = await _authProvider.login(email: email, password: password);
     if (!mounted) {
@@ -74,7 +79,7 @@ class _LoginPageState extends State<LoginPage> {
       if (isInactive) {
         _showMessage('Your account is not activated yet. Please activate via OTP.');
       } else {
-        _showMessage(_authProvider.error ?? 'Login failed.');
+        _showMessage(_resolveLoginErrorMessage());
       }
       return;
     }
@@ -131,6 +136,60 @@ class _LoginPageState extends State<LoginPage> {
     return false;
   }
 
+  bool get _isLoginFormValidForSubmit {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    if (email.isEmpty || !email.contains('@') || !email.contains('.')) {
+      return false;
+    }
+    if (password.isEmpty) {
+      return false;
+    }
+    return true;
+  }
+
+  String? _validateEmail(String? value) {
+    final email = (value ?? '').trim();
+    if (email.isEmpty) {
+      return 'Email is required';
+    }
+    if (!email.contains('@') || !email.contains('.')) {
+      return 'Enter a valid email';
+    }
+    return null;
+  }
+
+  String? _validatePassword(String? value) {
+    if ((value ?? '').isEmpty) {
+      return 'Password is required';
+    }
+    return null;
+  }
+
+  String _resolveLoginErrorMessage() {
+    final details = _authProvider.errorDetails;
+    if (details != null) {
+      for (final entry in details.entries) {
+        final value = entry.value;
+        if (value is List && value.isNotEmpty) {
+          final message = value.first.toString().trim();
+          if (message.isNotEmpty) {
+            return message;
+          }
+        }
+        if (value is String && value.trim().isNotEmpty) {
+          return value.trim();
+        }
+      }
+    }
+
+    final fallback = (_authProvider.error ?? '').trim();
+    if (fallback.toLowerCase() == 'validation failed.' || fallback.isEmpty) {
+      return 'Login failed. Please check your email and password.';
+    }
+    return fallback;
+  }
+
   bool _isActivationPending(AuthSession session) {
     if (!session.flags.emailVerified) {
       return true;
@@ -184,87 +243,101 @@ class _LoginPageState extends State<LoginPage> {
           body: SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    'Login',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 40),
-                  AuthTextField(
-                    controller: _emailController,
-                    label: 'Email',
-                    hint: 'Enter your email',
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                  const SizedBox(height: 20),
-                  AuthTextField(
-                    controller: _passwordController,
-                    label: 'Password',
-                    hint: 'Enter your password',
-                    isObscure: true,
-                  ),
-                  const SizedBox(height: 10),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ForgotPasswordEmailPage(),
-                          ),
-                        );
-                      },
-                      child: const Text(
-                        'Forgot password?',
-                        style: TextStyle(
-                          color: Color(0xFF9C27B0),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+              child: Form(
+                key: _formKey,
+                autovalidateMode: _loginFormSubmitted
+                    ? AutovalidateMode.onUserInteraction
+                    : AutovalidateMode.disabled,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Login',
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  if (isLoading)
-                    const CircularProgressIndicator()
-                  else
-                    AppButton(
-                      text: 'Submit',
-                      onPressed: _submitLogin,
+                    const SizedBox(height: 40),
+                    AuthTextField(
+                      controller: _emailController,
+                      label: 'Email',
+                      hint: 'Enter your email',
+                      keyboardType: TextInputType.emailAddress,
+                      validator: _validateEmail,
+                      onChanged: (_) => setState(() {
+                        _showActivationAction = false;
+                      }),
                     ),
-                  if (_showActivationAction) ...[
-                    const SizedBox(height: 14),
-                    TextButton(
-                      onPressed: _goActivateAccount,
-                      child: const Text('Activate account'),
+                    const SizedBox(height: 20),
+                    AuthTextField(
+                      controller: _passwordController,
+                      label: 'Password',
+                      hint: 'Enter your password',
+                      isObscure: true,
+                      validator: _validatePassword,
+                      onChanged: (_) => setState(() {
+                        _showActivationAction = false;
+                      }),
                     ),
-                  ],
-                  const Spacer(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text("Don't have an account? "),
-                      GestureDetector(
+                    const SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: GestureDetector(
                         onTap: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => const RegisterPage()),
+                            MaterialPageRoute(
+                              builder: (_) => const ForgotPasswordEmailPage(),
+                            ),
                           );
                         },
                         child: const Text(
-                          'Register',
+                          'Forgot password?',
                           style: TextStyle(
                             color: Color(0xFF9C27B0),
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
+                    ),
+                    const SizedBox(height: 24),
+                    if (isLoading)
+                      const CircularProgressIndicator()
+                    else
+                      AppButton(
+                        text: 'Submit',
+                        onPressed: _isLoginFormValidForSubmit ? _submitLogin : null,
+                      ),
+                    if (_showActivationAction) ...[
+                      const SizedBox(height: 14),
+                      TextButton(
+                        onPressed: _goActivateAccount,
+                        child: const Text('Activate account'),
+                      ),
                     ],
-                  ),
-                  const SizedBox(height: 20),
-                ],
+                    const Spacer(),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text("Don't have an account? "),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const RegisterPage()),
+                            );
+                          },
+                          child: const Text(
+                            'Register',
+                            style: TextStyle(
+                              color: Color(0xFF9C27B0),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
               ),
             ),
           ),

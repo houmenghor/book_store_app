@@ -81,6 +81,7 @@ class ApiClient {
     Map<String, String>? fields,
     List<http.MultipartFile>? files,
     bool authRequired = false,
+    bool includeEmptyFields = false,
   }) async {
     try {
       final request = http.MultipartRequest('POST', _buildUri(path));
@@ -93,7 +94,7 @@ class ApiClient {
       if (fields != null) {
         for (final entry in fields.entries) {
           final value = entry.value.trim();
-          if (value.isNotEmpty) {
+          if (includeEmptyFields || value.isNotEmpty) {
             request.fields[entry.key] = value;
           }
         }

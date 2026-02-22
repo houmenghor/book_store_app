@@ -25,7 +25,7 @@ class ProductApi {
         if (status != null) 'status': status,
         if (perPage != null) 'per_page': perPage,
         if (categoryId != null) 'category_id': categoryId,
-        if (page != null) 'page': page,
+        // Backend product index does not accept `page` (strict validation).
       },
     );
 
@@ -36,6 +36,36 @@ class ProductApi {
     final response = await _client.get(Endpoints.productByUuid(uuid));
     final data = (response['data'] as Map<String, dynamic>?) ?? <String, dynamic>{};
     return ProductModel.fromJson(data);
+  }
+
+  Future<ProductListResponse> getBestSellerProducts({
+    String? timeRange,
+    int? limit,
+  }) async {
+    final response = await _client.get(
+      Endpoints.bestSellerProducts,
+      query: <String, dynamic>{
+        if (timeRange != null && timeRange.isNotEmpty) 'time_range': timeRange,
+        if (limit != null) 'limit': limit,
+      },
+    );
+
+    return ProductListResponse.fromApi(response);
+  }
+
+  Future<ProductListResponse> getPopularProducts({
+    String? timeRange,
+    int? limit,
+  }) async {
+    final response = await _client.get(
+      Endpoints.popularProducts,
+      query: <String, dynamic>{
+        if (timeRange != null && timeRange.isNotEmpty) 'time_range': timeRange,
+        if (limit != null) 'limit': limit,
+      },
+    );
+
+    return ProductListResponse.fromApi(response);
   }
 
   Future<CategoryListResponse> getCategories({
@@ -54,7 +84,7 @@ class ProductApi {
         if (sort != null && sort.isNotEmpty) 'sort': sort,
         if (status != null) 'status': status,
         if (perPage != null) 'per_page': perPage,
-        if (page != null) 'page': page,
+        // Backend category index does not accept `page` (strict validation).
       },
     );
 

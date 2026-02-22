@@ -5,8 +5,10 @@ class TokenStorage {
   static const String _userNameKey = 'auth_user_name';
   static const String _userEmailKey = 'auth_user_email';
   static const String _userPhoneKey = 'auth_user_phone';
+  static const String _userProfileImageKey = 'auth_user_profile_image';
   static const String _userGenderKey = 'auth_user_gender';
   static const String _userDobKey = 'auth_user_dob';
+  static const String _pendingChangeEmailKey = 'auth_pending_change_email';
 
   Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
@@ -48,6 +50,16 @@ class TokenStorage {
     return prefs.getString(_userPhoneKey);
   }
 
+  Future<void> saveUserProfileImage(String imageUrl) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_userProfileImageKey, imageUrl);
+  }
+
+  Future<String?> readUserProfileImage() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_userProfileImageKey);
+  }
+
   Future<void> saveUserGender(String gender) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_userGenderKey, gender);
@@ -68,13 +80,43 @@ class TokenStorage {
     return prefs.getString(_userDobKey);
   }
 
+  Future<void> savePendingChangeEmail(
+    String email, {
+    String? accountKey,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_pendingEmailStorageKey(accountKey), email);
+  }
+
+  Future<String?> readPendingChangeEmail({String? accountKey}) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_pendingEmailStorageKey(accountKey));
+  }
+
+  Future<void> clearPendingChangeEmail({String? accountKey}) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_pendingEmailStorageKey(accountKey));
+  }
+
+  String _pendingEmailStorageKey(String? accountKey) {
+    final normalized = (accountKey ?? '').trim().toLowerCase();
+    if (normalized.isEmpty) {
+      return _pendingChangeEmailKey;
+    }
+
+    final safe = normalized.replaceAll(RegExp(r'[^a-z0-9]'), '_');
+    return '${_pendingChangeEmailKey}_$safe';
+  }
+
   Future<void> clearToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
     await prefs.remove(_userNameKey);
     await prefs.remove(_userEmailKey);
     await prefs.remove(_userPhoneKey);
+    await prefs.remove(_userProfileImageKey);
     await prefs.remove(_userGenderKey);
     await prefs.remove(_userDobKey);
+    await prefs.remove(_pendingChangeEmailKey);
   }
 }
