@@ -21,6 +21,18 @@ class _FakeAuthRepository implements IAuthRepository {
   }
 
   @override
+  Future<String> register({
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String phone,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    return 'ok';
+  }
+
+  @override
   Future<UserModel> updateProfile({
     required String firstName,
     required String lastName,

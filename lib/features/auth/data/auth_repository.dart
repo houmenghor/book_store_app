@@ -4,6 +4,14 @@ import 'auth_models.dart';
 
 abstract class IAuthRepository {
   Future<AuthSession> login({required String email, required String password});
+  Future<String> register({
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String phone,
+    required String password,
+    required String passwordConfirmation,
+  });
   Future<UserModel> updateProfile({
     required String firstName,
     required String lastName,
@@ -49,12 +57,35 @@ class AuthRepository implements IAuthRepository {
       if (resolvedPhone.isNotEmpty) {
         await _tokenStorage.saveUserPhone(resolvedPhone);
       }
+      final profileImage = (session.user.profileImage ?? '').trim();
+      if (profileImage.isNotEmpty) {
+        await _tokenStorage.saveUserProfileImage(profileImage);
+      }
       await _tokenStorage.saveUserGender((session.user.gender ?? '').trim());
       if ((session.user.dateOfBirth ?? '').trim().isNotEmpty) {
         await _tokenStorage.saveUserDateOfBirth(session.user.dateOfBirth!.trim());
       }
     }
     return session;
+  }
+
+  @override
+  Future<String> register({
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String phone,
+    required String password,
+    required String passwordConfirmation,
+  }) {
+    return _api.register(
+      firstName: firstName,
+      lastName: lastName,
+      email: email,
+      phone: phone,
+      password: password,
+      passwordConfirmation: passwordConfirmation,
+    );
   }
 
   @override
@@ -82,12 +113,27 @@ class AuthRepository implements IAuthRepository {
     if ((user.phone ?? '').trim().isNotEmpty) {
       await _tokenStorage.saveUserPhone(user.phone!.trim());
     }
+    if ((user.profileImage ?? '').trim().isNotEmpty) {
+      await _tokenStorage.saveUserProfileImage(user.profileImage!.trim());
+    }
     await _tokenStorage.saveUserGender((user.gender ?? '').trim());
     if ((user.dateOfBirth ?? '').trim().isNotEmpty) {
       await _tokenStorage.saveUserDateOfBirth(user.dateOfBirth!.trim());
     }
 
     return user;
+  }
+
+  Future<String> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String newPasswordConfirmation,
+  }) {
+    return _api.changePassword(
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+      newPasswordConfirmation: newPasswordConfirmation,
+    );
   }
 
   @override

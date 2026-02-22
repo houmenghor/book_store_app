@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/config/theme.dart';
 import '../../../../core/network/api_client.dart';
@@ -18,12 +19,14 @@ class EditProfilePage extends StatefulWidget {
     required this.initialPhone,
     required this.initialGender,
     required this.initialDateOfBirth,
+    required this.initialProfileImageUrl,
   });
 
   final String initialName;
   final String initialPhone;
   final String initialGender;
   final String initialDateOfBirth;
+  final String initialProfileImageUrl;
 
   @override
   State<EditProfilePage> createState() => _EditProfilePageState();
@@ -148,7 +151,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         firstName: firstName,
         lastName: lastName,
         phone: phone,
-        gender: _selectedGender,
+        gender: _selectedGender ?? '',
         dateOfBirth: dob.isEmpty ? null : dob,
         profileImagePath: _selectedImagePath,
       );
@@ -218,21 +221,36 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       ),
                       clipBehavior: Clip.antiAlias,
                       alignment: Alignment.center,
-                      child: _selectedImagePath == null
-                          ? Text(
-                              initials,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 26,
-                              ),
-                            )
-                          : Image.file(
+                      child: _selectedImagePath != null
+                          ? Image.file(
                               File(_selectedImagePath!),
                               fit: BoxFit.cover,
                               width: 86,
                               height: 86,
-                            ),
+                            )
+                          : (widget.initialProfileImageUrl.trim().isNotEmpty
+                              ? Image.network(
+                                  widget.initialProfileImageUrl.trim(),
+                                  fit: BoxFit.cover,
+                                  width: 86,
+                                  height: 86,
+                                  errorBuilder: (_, __, ___) => Text(
+                                    initials,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 26,
+                                    ),
+                                  ),
+                                )
+                              : Text(
+                                  initials,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 26,
+                                  ),
+                                )),
                     ),
                     Positioned(
                       right: -2,
@@ -249,7 +267,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             border: Border.all(color: Colors.white, width: 2),
                           ),
                           child: const Icon(
-                            Icons.camera_alt_outlined,
+                            LucideIcons.camera,
                             size: 14,
                             color: Colors.white,
                           ),
@@ -339,7 +357,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         readOnly: true,
                         onTap: _pickDateOfBirth,
                         decoration: _inputDecoration('YYYY-MM-DD').copyWith(
-                          suffixIcon: const Icon(Icons.calendar_today_outlined, size: 18),
+                          suffixIcon: const Icon(LucideIcons.calendar, size: 18),
                         ),
                       ),
                     ),

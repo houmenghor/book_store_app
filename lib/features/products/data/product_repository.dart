@@ -14,6 +14,16 @@ abstract class IProductRepository {
 
   Future<ProductModel> getProduct(String uuid);
 
+  Future<ProductListResponse> getBestSellerProducts({
+    String? timeRange,
+    int? limit,
+  });
+
+  Future<ProductListResponse> getPopularProducts({
+    String? timeRange,
+    int? limit,
+  });
+
   Future<CategoryListResponse> getCategories({
     String? search,
     String? column,
@@ -53,6 +63,28 @@ class ProductRepository implements IProductRepository {
   @override
   Future<ProductModel> getProduct(String uuid) {
     return _api.getProduct(uuid);
+  }
+
+  @override
+  Future<ProductListResponse> getBestSellerProducts({
+    String? timeRange,
+    int? limit,
+  }) {
+    return _api.getBestSellerProducts(
+      timeRange: timeRange,
+      limit: limit,
+    );
+  }
+
+  @override
+  Future<ProductListResponse> getPopularProducts({
+    String? timeRange,
+    int? limit,
+  }) {
+    return _api.getPopularProducts(
+      timeRange: timeRange,
+      limit: limit,
+    );
   }
 
   @override

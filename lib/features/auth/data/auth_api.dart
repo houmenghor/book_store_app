@@ -25,6 +25,29 @@ class AuthApi {
     return AuthSession.fromJson(data);
   }
 
+  Future<String> register({
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String phone,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    final response = await _client.post(
+      Endpoints.register,
+      body: {
+        'first_name': firstName,
+        'last_name': lastName,
+        'email': email,
+        'phone': phone,
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+      },
+    );
+
+    return (response['message'] as String?) ?? 'Register successful.';
+  }
+
   Future<String> forgotPassword({required String email}) async {
     final response = await _client.post(
       Endpoints.forgotPassword,
@@ -102,11 +125,12 @@ class AuthApi {
     final response = await _client.multipartPost(
       Endpoints.updateProfile,
       authRequired: true,
+      includeEmptyFields: true,
       fields: {
         'first_name': firstName,
         'last_name': lastName,
         'phone': phone,
-        if (gender != null && gender.trim().isNotEmpty) 'gender': gender,
+        if (gender != null) 'gender': gender,
         if (dateOfBirth != null && dateOfBirth.trim().isNotEmpty)
           'date_of_birth': dateOfBirth,
       },
@@ -117,6 +141,24 @@ class AuthApi {
     final userRaw = data['user'];
     final userMap = userRaw is Map<String, dynamic> ? userRaw : data;
     return UserModel.fromJson(userMap);
+  }
+
+  Future<String> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String newPasswordConfirmation,
+  }) async {
+    final response = await _client.post(
+      Endpoints.changePassword,
+      authRequired: true,
+      body: {
+        'current_password': currentPassword,
+        'new_password': newPassword,
+        'new_password_confirmation': newPasswordConfirmation,
+      },
+    );
+
+    return (response['message'] as String?) ?? 'Password changed successfully.';
   }
 
   Future<void> logout() async {

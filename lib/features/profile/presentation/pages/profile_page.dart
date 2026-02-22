@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/config/theme.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/token_storage.dart';
+import '../../../../core/storage/wishlist_storage.dart';
+import '../../../orders/data/order_api.dart';
+import 'account_settings_page.dart';
 import 'edit_profile_page.dart';
+import 'wishlist_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({
@@ -10,6 +16,7 @@ class ProfilePage extends StatefulWidget {
     required this.userName,
     required this.userEmail,
     required this.userPhone,
+    required this.userProfileImage,
     required this.isLoggedIn,
     required this.onLogout,
     required this.onLogin,
@@ -18,6 +25,7 @@ class ProfilePage extends StatefulWidget {
   final String userName;
   final String userEmail;
   final String userPhone;
+  final String userProfileImage;
   final bool isLoggedIn;
   final Future<void> Function() onLogout;
   final Future<void> Function() onLogin;
@@ -28,11 +36,20 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   final TokenStorage _tokenStorage = TokenStorage();
+  late final WishlistStorage _wishlistStorage = WishlistStorage(
+    tokenStorage: _tokenStorage,
+  );
+  late final OrderApi _orderApi = OrderApi(
+    ApiClient(tokenStorage: _tokenStorage),
+  );
 
   bool _isLoadingAction = false;
   late String _name;
   late String _email;
   late String _phone;
+  late String _profileImageUrl;
+  int _wishlistCount = 0;
+  int _orderCount = 0;
 
   @override
   void initState() {
@@ -40,10 +57,13 @@ class _ProfilePageState extends State<ProfilePage> {
     _name = widget.userName;
     _email = widget.userEmail;
     _phone = widget.userPhone;
+    _profileImageUrl = widget.userProfileImage;
 
-    if (_email.trim().isEmpty || _phone.trim().isEmpty) {
+    if (_email.trim().isEmpty || _phone.trim().isEmpty || _profileImageUrl.trim().isEmpty) {
       _reloadProfileFromStorage();
     }
+    _reloadWishlistCount();
+    _reloadOrderCount();
   }
 
   Future<void> _handleLogout() async {
@@ -62,6 +82,9 @@ class _ProfilePageState extends State<ProfilePage> {
     if (!mounted) {
       return;
     }
+    await _reloadProfileFromStorage();
+    await _reloadWishlistCount();
+    await _reloadOrderCount();
     setState(() => _isLoadingAction = false);
   }
 
@@ -91,19 +114,41 @@ class _ProfilePageState extends State<ProfilePage> {
           initialPhone: _phone,
           initialGender: gender,
           initialDateOfBirth: dateOfBirth,
+          initialProfileImageUrl: _profileImageUrl,
         ),
       ),
     );
 
     if (updated == true) {
       await _reloadProfileFromStorage();
+      await _reloadOrderCount();
     }
+  }
+
+  Future<void> _openWishlist() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const WishlistPage(),
+      ),
+    );
+    await _reloadWishlistCount();
+  }
+
+  Future<void> _openAccountSettings() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AccountSettingsPage(currentEmail: _email),
+      ),
+    );
   }
 
   Future<void> _reloadProfileFromStorage() async {
     final userName = await _tokenStorage.readUserName();
     final userEmail = await _tokenStorage.readUserEmail();
     final userPhone = await _tokenStorage.readUserPhone();
+    final userProfileImage = await _tokenStorage.readUserProfileImage();
 
     if (!mounted) {
       return;
@@ -113,7 +158,46 @@ class _ProfilePageState extends State<ProfilePage> {
       _name = (userName ?? '').trim();
       _email = (userEmail ?? '').trim();
       _phone = (userPhone ?? '').trim();
+      _profileImageUrl = (userProfileImage ?? '').trim();
     });
+  }
+
+  Future<void> _reloadWishlistCount() async {
+    final items = await _wishlistStorage.readItems();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _wishlistCount = items.length;
+    });
+  }
+
+  Future<void> _reloadOrderCount() async {
+    final token = await _tokenStorage.readToken();
+    if (token == null || token.trim().isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _orderCount = 0;
+      });
+      return;
+    }
+
+    try {
+      final response = await _orderApi.getOrders(perPage: 1, page: 1);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _orderCount = response.totalCount ?? response.orders.length;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _orderCount = 0;
+      });
+    }
   }
 
   @override
@@ -145,7 +229,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 children: [
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back, color: AppColors.textMain),
+                    icon: const Icon(LucideIcons.arrowLeft, color: AppColors.textMain),
                   ),
                   const Text(
                     'Profile',
@@ -163,13 +247,23 @@ class _ProfilePageState extends State<ProfilePage> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    _buildProfileCard(name, initials, email, phone),
+                    _buildProfileCard(name, initials, email, phone, _profileImageUrl),
                     const SizedBox(height: 12),
                     Row(
-                      children: const [
-                        Expanded(child: _StatsCard(count: '0', label: 'Orders')),
-                        SizedBox(width: 10),
-                        Expanded(child: _StatsCard(count: '0', label: 'Wishlist')),
+                      children: [
+                        Expanded(
+                          child: _StatsCard(
+                            count: _orderCount.toString(),
+                            label: 'Orders',
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _StatsCard(
+                            count: _wishlistCount.toString(),
+                            label: 'Wishlist',
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -182,21 +276,21 @@ class _ProfilePageState extends State<ProfilePage> {
                       child: Column(
                         children: [
                           _ProfileActionTile(
-                            icon: Icons.person_outline,
+                            icon: LucideIcons.user,
                             title: 'Edit Profile',
                             onTap: _openEditProfile,
                           ),
                           const Divider(height: 1, color: Color(0xFFE8E9EF)),
                           _ProfileActionTile(
-                            icon: Icons.favorite_border,
+                            icon: LucideIcons.heart,
                             title: 'Wishlist',
-                            onTap: () => _showComingSoon('Wishlist'),
+                            onTap: _openWishlist,
                           ),
                           const Divider(height: 1, color: Color(0xFFE8E9EF)),
                           _ProfileActionTile(
-                            icon: Icons.settings_outlined,
+                            icon: LucideIcons.settings,
                             title: 'Account Settings',
-                            onTap: () => _showComingSoon('Account Settings'),
+                            onTap: _openAccountSettings,
                           ),
                         ],
                       ),
@@ -209,7 +303,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             ? null
                             : (widget.isLoggedIn ? _handleLogout : _handleLogin),
                         icon: Icon(
-                          widget.isLoggedIn ? Icons.logout : Icons.login,
+                          widget.isLoggedIn ? LucideIcons.logOut : LucideIcons.logIn,
                           size: 18,
                         ),
                         label: Text(widget.isLoggedIn ? 'Logout' : 'Login'),
@@ -239,6 +333,7 @@ class _ProfilePageState extends State<ProfilePage> {
     String initials,
     String email,
     String phone,
+    String profileImageUrl,
   ) {
     return Container(
       width: double.infinity,
@@ -253,26 +348,9 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           Row(
             children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [AppColors.secondary, AppColors.primary],
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    initials.isEmpty ? 'JD' : initials,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
+              _ProfileAvatar(
+                initials: initials.isEmpty ? 'JD' : initials,
+                imageUrl: profileImageUrl,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -303,7 +381,7 @@ class _ProfilePageState extends State<ProfilePage> {
           const SizedBox(height: 16),
           Row(
             children: [
-              const Icon(Icons.email_outlined, size: 16, color: AppColors.textSecondary),
+              const Icon(LucideIcons.mail, size: 16, color: AppColors.textSecondary),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -316,7 +394,7 @@ class _ProfilePageState extends State<ProfilePage> {
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(Icons.phone_outlined, size: 16, color: AppColors.textSecondary),
+              const Icon(LucideIcons.phone, size: 16, color: AppColors.textSecondary),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -330,10 +408,58 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
   }
+}
 
-  void _showComingSoon(String label) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$label is coming soon.')),
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({
+    required this.initials,
+    required this.imageUrl,
+  });
+
+  final String initials;
+  final String imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = imageUrl.trim();
+    if (url.isNotEmpty) {
+      return ClipOval(
+        child: Container(
+          width: 56,
+          height: 56,
+          color: const Color(0xFFF0F1F6),
+          child: Image.network(
+            url,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _fallback(),
+          ),
+        ),
+      );
+    }
+    return _fallback();
+  }
+
+  Widget _fallback() {
+    return Container(
+      width: 56,
+      height: 56,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.secondary, AppColors.primary],
+        ),
+      ),
+      child: Center(
+        child: Text(
+          initials,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -413,7 +539,7 @@ class _ProfileActionTile extends StatelessWidget {
               ),
             ),
             const Icon(
-              Icons.chevron_right,
+              LucideIcons.chevronRight,
               color: AppColors.textSecondary,
             ),
           ],

@@ -3,11 +3,21 @@ class ProductCategory {
     required this.id,
     required this.name,
     this.description,
+    this.status,
   });
 
   final int id;
   final String name;
   final String? description;
+  final String? status;
+
+  bool get isActive {
+    final value = (status ?? '').trim().toLowerCase();
+    if (value.isEmpty) {
+      return true;
+    }
+    return value == '1' || value == 'active';
+  }
 
   factory ProductCategory.fromJson(Map<String, dynamic> json) {
     return ProductCategory(
@@ -16,6 +26,7 @@ class ProductCategory {
           ? _asString(json['name'])
           : _asString(json['title']),
       description: _asNullableString(json['description']),
+      status: _asNullableString(json['status']),
     );
   }
 }
@@ -31,6 +42,10 @@ class ProductModel {
     required this.status,
     this.image,
     this.category,
+    this.soldQuantity,
+    this.soldAmount,
+    this.popularityScore,
+    this.orderCount,
   });
 
   final int id;
@@ -42,11 +57,35 @@ class ProductModel {
   final String status;
   final String? image;
   final ProductCategory? category;
+  final int? soldQuantity;
+  final double? soldAmount;
+  final double? popularityScore;
+  final int? orderCount;
 
   bool get isActive => status == 'active' || status == '1';
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     final categoryRaw = json['category_id'] ?? json['category'];
+    ProductCategory? parsedCategory;
+    if (categoryRaw is Map<String, dynamic>) {
+      parsedCategory = ProductCategory.fromJson(categoryRaw);
+    } else if (categoryRaw is Map) {
+      parsedCategory = ProductCategory.fromJson(Map<String, dynamic>.from(categoryRaw));
+    } else {
+      final categoryId = _asInt(categoryRaw);
+      if (categoryId > 0) {
+        parsedCategory = ProductCategory(
+          id: categoryId,
+          name: _firstNonEmptyString(json, const [
+            'category_name',
+            'category_title',
+            'category',
+          ]),
+          description: null,
+          status: null,
+        );
+      }
+    }
 
     return ProductModel(
       id: _asInt(json['id']),
@@ -59,9 +98,11 @@ class ProductModel {
           ? _asString(json['status'])
           : 'inactive',
       image: _asNullableString(json['image']),
-      category: categoryRaw is Map<String, dynamic>
-          ? ProductCategory.fromJson(categoryRaw)
-          : null,
+      category: parsedCategory,
+      soldQuantity: _asNullableInt(json['sold_quantity']),
+      soldAmount: _asNullableDouble(json['sold_amount']),
+      popularityScore: _asNullableDouble(json['popularity_score']),
+      orderCount: _asNullableInt(json['order_count']),
     );
   }
 }
@@ -226,4 +267,32 @@ String? _asNullableString(dynamic value) {
   }
   final result = _asString(value).trim();
   return result.isEmpty ? null : result;
+}
+
+String _firstNonEmptyString(Map<String, dynamic> json, List<String> keys) {
+  for (final key in keys) {
+    final value = _asString(json[key]).trim();
+    if (value.isNotEmpty) return value;
+  }
+  return '';
+}
+
+int? _asNullableInt(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) {
+    return int.tryParse(value.trim());
+  }
+  return null;
+}
+
+double? _asNullableDouble(dynamic value) {
+  if (value == null) return null;
+  if (value is double) return value;
+  if (value is num) return value.toDouble();
+  if (value is String) {
+    return double.tryParse(value.trim());
+  }
+  return null;
 }
